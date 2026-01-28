@@ -1,3 +1,17 @@
+/* Filtros de actividades */
+.filters {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.filters input,
+.filters select {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 15px;
+}
 * {
   box-sizing: border-box;
   margin: 0;

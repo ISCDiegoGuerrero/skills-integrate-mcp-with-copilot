@@ -3,28 +3,76 @@ document.addEventListener("DOMContentLoaded", () => {
   const activitySelect = document.getElementById("activity");
   const signupForm = document.getElementById("signup-form");
   const messageDiv = document.getElementById("message");
+  const searchInput = document.getElementById("search-input");
+  const categoryFilter = document.getElementById("category-filter");
+  const nameFilter = document.getElementById("name-filter");
+
+  let allActivities = {};
 
   // Function to fetch activities from API
   async function fetchActivities() {
     try {
       const response = await fetch("/activities");
       const activities = await response.json();
+      allActivities = activities;
+      populateFilters(activities);
+      renderActivities();
+    } catch (error) {
+      activitiesList.innerHTML =
+        "<p>Failed to load activities. Please try again later.</p>";
+      console.error("Error fetching activities:", error);
+    }
+  }
 
-      // Clear loading message
-      activitiesList.innerHTML = "";
+  // Populate filter dropdowns
+  function populateFilters(activities) {
+    // Categorías únicas
+    const categories = new Set();
+    const names = new Set();
+    Object.entries(activities).forEach(([name, details]) => {
+      if (details.category) categories.add(details.category);
+      names.add(name);
+    });
+    // Limpiar y poblar selectores
+    categoryFilter.innerHTML = '<option value="">Todas las categorías</option>';
+    categories.forEach((cat) => {
+      const opt = document.createElement("option");
+      opt.value = cat;
+      opt.textContent = cat;
+      categoryFilter.appendChild(opt);
+    });
+    nameFilter.innerHTML = '<option value="">Todos los nombres</option>';
+    names.forEach((n) => {
+      const opt = document.createElement("option");
+      opt.value = n;
+      opt.textContent = n;
+      nameFilter.appendChild(opt);
+    });
+  }
 
-      // Populate activities list
-      Object.entries(activities).forEach(([name, details]) => {
-        const activityCard = document.createElement("div");
-        activityCard.className = "activity-card";
+  // Render activities with filters
+  function renderActivities() {
+    const search = searchInput.value.toLowerCase();
+    const selectedCategory = categoryFilter.value;
+    const selectedName = nameFilter.value;
+    activitiesList.innerHTML = "";
+    activitySelect.innerHTML = '<option value="">-- Select an activity --</option>';
 
-        const spotsLeft =
-          details.max_participants - details.participants.length;
+    Object.entries(allActivities).forEach(([name, details]) => {
+      // Filtro por nombre
+      if (selectedName && name !== selectedName) return;
+      // Filtro por categoría
+      if (selectedCategory && details.category !== selectedCategory) return;
+      // Filtro por texto libre
+      const text = `${name} ${details.description} ${details.category}`.toLowerCase();
+      if (search && !text.includes(search)) return;
 
-        // Create participants HTML with delete icons instead of bullet points
-        const participantsHTML =
-          details.participants.length > 0
-            ? `<div class="participants-section">
+      const activityCard = document.createElement("div");
+      activityCard.className = "activity-card";
+      const spotsLeft = details.max_participants - details.participants.length;
+      const participantsHTML =
+        details.participants.length > 0
+          ? `<div class="participants-section">
               <h5>Participants:</h5>
               <ul class="participants-list">
                 ${details.participants
@@ -35,36 +83,28 @@ document.addEventListener("DOMContentLoaded", () => {
                   .join("")}
               </ul>
             </div>`
-            : `<p><em>No participants yet</em></p>`;
-
-        activityCard.innerHTML = `
-          <h4>${name}</h4>
-          <p>${details.description}</p>
-          <p><strong>Schedule:</strong> ${details.schedule}</p>
-          <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
-          <div class="participants-container">
-            ${participantsHTML}
-          </div>
-        `;
-
-        activitiesList.appendChild(activityCard);
-
-        // Add option to select dropdown
-        const option = document.createElement("option");
-        option.value = name;
-        option.textContent = name;
-        activitySelect.appendChild(option);
-      });
-
-      // Add event listeners to delete buttons
-      document.querySelectorAll(".delete-btn").forEach((button) => {
-        button.addEventListener("click", handleUnregister);
-      });
-    } catch (error) {
-      activitiesList.innerHTML =
-        "<p>Failed to load activities. Please try again later.</p>";
-      console.error("Error fetching activities:", error);
-    }
+          : `<p><em>No participants yet</em></p>`;
+      activityCard.innerHTML = `
+        <h4>${name}</h4>
+        <p>${details.description}</p>
+        <p><strong>Categoría:</strong> ${details.category || "Sin categoría"}</p>
+        <p><strong>Schedule:</strong> ${details.schedule}</p>
+        <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
+        <div class="participants-container">
+          ${participantsHTML}
+        </div>
+      `;
+      activitiesList.appendChild(activityCard);
+      // Add option to select dropdown
+      const option = document.createElement("option");
+      option.value = name;
+      option.textContent = name;
+      activitySelect.appendChild(option);
+    });
+    // Add event listeners to delete buttons
+    document.querySelectorAll(".delete-btn").forEach((button) => {
+      button.addEventListener("click", handleUnregister);
+    });
   }
 
   // Handle unregister functionality
@@ -155,6 +195,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Initialize app
+  // Filtros: eventos
+  if (searchInput) searchInput.addEventListener("input", renderActivities);
+  if (categoryFilter) categoryFilter.addEventListener("change", renderActivities);
+  if (nameFilter) nameFilter.addEventListener("change", renderActivities);
+
+  // Inicializar app
   fetchActivities();
 });
